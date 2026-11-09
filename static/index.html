@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo List</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: {} } };
+  </script>
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen">
+  <main class="max-w-xl mx-auto py-10 px-4">
+    <h1 class="text-3xl font-bold mb-6 text-blue-700">Todo List</h1>
+
+    <form id="form" class="flex gap-2 mb-6">
+      <input id="title" type="text" placeholder="Nueva tarea..." required
+        class="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      <button type="submit"
+        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Agregar</button>
+    </form>
+
+    <ul id="list" class="space-y-2"></ul>
+    <p id="empty" class="text-gray-500 text-center mt-6 hidden">No hay tareas.</p>
+  </main>
+
+  <script>
+    const API = '';
+    const listEl = document.getElementById('list');
+    const emptyEl = document.getElementById('empty');
+
+    async function load() {
+      const res = await fetch(API + '/todos');
+      const todos = await res.json();
+      listEl.innerHTML = '';
+      if (todos.length === 0) { emptyEl.classList.remove('hidden'); return; }
+      emptyEl.classList.add('hidden');
+      todos.forEach(t => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center gap-3 bg-white border border-gray-200 rounded px-3 py-2';
+        li.innerHTML = `
+          <input type="checkbox" ${t.completed ? 'checked' : ''} class="w-5 h-5 accent-blue-600" />
+          <span class="flex-1 ${t.completed ? 'line-through text-gray-400' : ''}">${escapeHtml(t.title)}</span>
+          <button class="text-red-600 hover:text-red-800 text-sm">Eliminar</button>
+        `;
+        const cb = li.querySelector('input');
+        const del = li.querySelector('button');
+        cb.addEventListener('change', async () => {
+          await fetch(API + '/todos/' + t.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completed: cb.checked })
+          });
+          load();
+        });
+        del.addEventListener('click', async () => {
+          await fetch(API + '/todos/' + t.id, { method: 'DELETE' });
+          load();
+        });
+        listEl.appendChild(li);
+      });
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('title');
+      const title = input.value.trim();
+      if (!title) return;
+      await fetch(API + '/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+      input.value = '';
+      load();
+    });
+
+    load();
+  </script>
+</body>
+</html>
